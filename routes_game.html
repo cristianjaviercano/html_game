@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Misión de Recorrido por el Barrio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light gray-blue background for urban feel */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-width: 1200px;
+            width: 100%;
+        }
+        .title {
+            font-size: 2.5em;
+            font-weight: 700;
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 20px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+        .game-area {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        @media (min-width: 768px) {
+            .game-area {
+                flex-direction: row;
+            }
+        }
+
+        .map-canvas {
+            border: 3px solid #b0c4de; /* Light steel blue border for map */
+            /* Background image for the map */
+            background-image: url('imagen desde arriba de un barrio.png');
+            background-size: cover; /* Cover the entire canvas area */
+            background-position: center; /* Center the image */
+            background-repeat: no-repeat; /* Do not repeat the image */
+            position: relative;
+            overflow: hidden;
+            border-radius: 15px;
+            flex-grow: 1;
+            min-height: 300px; /* Minimum height for canvas */
+            width: 100%; /* Ensure canvas takes full width on small screens */
+            max-width: 600px; /* Max width for consistency */
+            aspect-ratio: 1 / 1; /* Maintain square aspect ratio */
+        }
+
+        .controls-panel {
+            background-color: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            flex-basis: 400px; /* Fixed width for controls on larger screens */
+            flex-shrink: 0;
+        }
+
+        .instructions, .errand-list, .path-selection, .user-path-display, .feedback-message {
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e0e0e0;
+        }
+
+        .instructions h3, .errand-list h3, .path-selection h3, .user-path-display h3 {
+            font-weight: 600;
+            color: #34495e;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .errand-item, .user-path-item {
+            padding: 8px 0;
+            border-bottom: 1px dashed #e0e0e0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .errand-item:last-child, .user-path-item:last-child {
+            border-bottom: none;
+        }
+
+        .available-locations {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .available-location-item {
+            background-color: #ecf0f1;
+            padding: 8px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+            font-size: 0.9em;
+            color: #2c3e50;
+            border: 1px solid #bdc3c7;
+        }
+        .available-location-item:hover {
+            background-color: #dbe4e6;
+            transform: translateY(-1px);
+        }
+        .available-location-item.selected {
+            background-color: #3498db;
+            color: white;
+            border-color: #2980b9;
+        }
+        /* New style for locations that are part of errands but not yet selected */
+        .available-location-item.needed-errand {
+            background-color: #e6ffe6; /* Light green */
+            border: 2px solid #28a745; /* Green border */
+            font-weight: 600;
+        }
+        /* Style for locations that have been added to the user's path */
+        .available-location-item.path-added {
+            background-color: #d4edda; /* Lighter green */
+            color: #155724; /* Darker green text */
+            border: 1px solid #c3e6cb;
+            cursor: not-allowed;
+            opacity: 0.7;
+            text-decoration: line-through;
+        }
+
+
+        .game-button {
+            background-color: #28a745; /* Green */
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            margin-top: 10px;
+        }
+        .game-button:hover {
+            background-color: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+        }
+        .game-button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .game-button.disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        #startGameBtn {
+            background-color: #007bff; /* Blue */
+        }
+        #startGameBtn:hover {
+            background-color: #0056b3;
+        }
+        #submitPathBtn {
+            background-color: #dc3545; /* Red */
+        }
+        #submitPathBtn:hover {
+            background-color: #c82333;
+        }
+
+        .feedback-message {
+            font-size: 1.2em;
+            font-weight: 600;
+            text-align: center;
+            padding: 15px;
+        }
+        .feedback-message.win {
+            color: #28a745;
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+        }
+        .feedback-message.lose {
+            color: #dc3545;
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+
+        /* Icon styling for locations */
+        .location-icon {
+            font-size: 1.2em;
+            line-height: 1;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+    <div class="container">
+        <h1 class="title">Misión de Recorrido por el Barrio</h1>
+        <div class="game-area">
+            <div class="relative map-canvas">
+                <canvas id="islandMap" class="absolute top-0 left-0 w-full h-full"></canvas>
+            </div>
+            <div class="controls-panel">
+                <div id="instructions" class="instructions">
+                    <h3>Instrucciones:</h3>
+                    <p>¡Bienvenido al Barrio Amistad! Tienes varias misiones que completar. Debes visitar todas las ubicaciones indicadas en la sección "Misiones Actuales" en el orden que creas que te dará el recorrido más corto. Si tu recorrido es el más corto, ¡ganas!</p>
+                    <p>Haz clic en las ubicaciones disponibles para añadirlas a tu recorrido. Las ubicaciones con borde verde son las que aún te faltan por añadir. Luego, haz clic en "Terminar Misión" para verificar tu ruta.</p>
+                </div>
+
+                <div id="errandList" class="errand-list">
+                    <h3>Misiones Actuales:</h3>
+                    <ul id="currentErrands">
+                        <li>Comienza una nueva aventura para ver tus misiones.</li>
+                    </ul>
+                </div>
+
+                <div class="path-selection">
+                    <h3>Selecciona tu Recorrido:</h3>
+                    <div id="availableLocations" class="available-locations">
+                        </div>
+                    <button id="addLocationBtn" class="game-button disabled" disabled>Añadir a Recorrido</button>
+                    <button id="clearPathBtn" class="game-button disabled" disabled>Limpiar Recorrido</button>
+                </div>
+
+                <div id="userPathDisplay" class="user-path-display">
+                    <h3>Tu Recorrido:</h3>
+                    <ul id="userPathList">
+                        <li>Tu recorrido aparecerá aquí.</li>
+                    </ul>
+                </div>
+                <button id="submitPathBtn" class="game-button disabled" disabled>Terminar Misión</button>
+                <button id="startGameBtn" class="game-button">Comenzar Nueva Aventura</button>
+                <div id="feedback" class="feedback-message hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables for Firebase configuration (provided by the environment)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Canvas setup
+        const canvas = document.getElementById('islandMap');
+        const ctx = canvas.getContext('2d');
+
+        // Game state variables
+        let locations = [
+            { id: 'bakery', name: 'Panadería "El Buen Pan"', x: 100, y: 150, color: '#FFD700', icon: '🍞' },
+            { id: 'cafe', name: 'Cafetería "Aroma"', x: 250, y: 50, color: '#A0522D', icon: '☕' },
+            { id: 'supermarket', name: 'Supermercado "Vecino"', x: 400, y: 100, color: '#4CAF50', icon: '🛒' },
+            { id: 'park', name: 'Parque Central', x: 150, y: 300, color: '#8BC34A', icon: '🌳' },
+            { id: 'library', name: 'Librería "El Lector"', x: 350, y: 250, color: '#8B008B', icon: '📚' },
+            { id: 'pharmacy', name: 'Farmacia "Salud Viva"', x: 50, y: 50, color: '#DC143C', icon: '💊' },
+            { id: 'postoffice', name: 'Oficina de Correos', x: 300, y: 350, color: '#FF8C00', icon: '✉️' }
+        ];
+
+        let currentErrandLocations = [];
+        let correctPath = [];
+        let userPath = [];
+        let gameStarted = false;
+        let selectedLocationId = null; // For selecting a location to add to path
+
+        // UI Elements
+        const currentErrandsUl = document.getElementById('currentErrands');
+        const availableLocationsDiv = document.getElementById('availableLocations');
+        const userPathListUl = document.getElementById('userPathList');
+        const feedbackDiv = document.getElementById('feedback');
+        const startGameBtn = document.getElementById('startGameBtn');
+        const addLocationBtn = document.getElementById('addLocationBtn');
+        const clearPathBtn = document.getElementById('clearPathBtn');
+        const submitPathBtn = document.getElementById('submitPathBtn');
+
+        // --- Utility Functions ---
+
+        /**
+         * Calculates the Euclidean distance between two locations.
+         * @param {object} loc1 - The first location object with x, y coordinates.
+         * @param {object} loc2 - The second location object with x, y coordinates.
+         * @returns {number} The distance between the two locations.
+         */
+        function calculateDistance(loc1, loc2) {
+            const dx = loc1.x - loc2.x;
+            const dy = loc1.y - loc2.y;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        /**
+         * Calculates the total distance of a given path.
+         * @param {Array<object>} path - An array of location objects representing the path.
+         * @returns {number} The total distance of the path.
+         */
+        function calculatePathDistance(path) {
+            let totalDistance = 0;
+            for (let i = 0; i < path.length - 1; i++) {
+                totalDistance += calculateDistance(path[i], path[i + 1]);
+            }
+            return totalDistance;
+        }
+
+        /**
+         * Generates all permutations of an array.
+         * Used for the brute-force TSP solver.
+         * @param {Array<any>} arr - The input array.
+         * @returns {Array<Array<any>>} An array containing all permutations.
+         */
+        function getPermutations(arr) {
+            if (arr.length === 0) return [[]];
+            if (arr.length === 1) return [arr];
+
+            const result = [];
+            for (let i = 0; i < arr.length; i++) {
+                const firstChar = arr[i];
+                const charsLeft = arr.slice(0, i).concat(arr.slice(i + 1));
+                const innerPermutations = getPermutations(charsLeft);
+                for (let j = 0; j < innerPermutations.length; j++) {
+                    result.push([firstChar].concat(innerPermutations[j]));
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Finds the shortest path among a set of locations using brute force (TSP solver).
+         * @param {Array<object>} errandLocs - The array of location objects for the current errands.
+         * @returns {Array<object>} The array of location objects representing the shortest path.
+         */
+        function findShortestPath(errandLocs) {
+            if (errandLocs.length <= 1) {
+                return errandLocs;
+            }
+
+            const permutations = getPermutations(errandLocs);
+            let minDistance = Infinity;
+            let shortestPath = [];
+
+            permutations.forEach(permutation => {
+                const currentDistance = calculatePathDistance(permutation);
+                if (currentDistance < minDistance) {
+                    minDistance = currentDistance;
+                    shortestPath = permutation;
+                }
+            });
+            return shortestPath;
+        }
+
+        // --- Drawing Functions ---
+
+        /**
+         * Draws the map elements on the canvas.
+         * @param {Array<object>} [path=[]] - Optional path to draw on the map.
+         */
+        function drawMap(path = []) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
+
+            // Draw locations
+            locations.forEach(loc => {
+                ctx.beginPath();
+                ctx.arc(loc.x, loc.y, 15, 0, Math.PI * 2); // Draw circle for location
+                ctx.fillStyle = loc.color;
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 2;
+                ctx.fill();
+                ctx.stroke();
+
+                // Draw icon/text
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = 'white';
+                ctx.fillText(loc.icon, loc.x, loc.y + 2); // Adjust y for better centering of emoji
+            });
+
+            // Draw path if provided
+            if (path.length > 1) {
+                ctx.beginPath();
+                ctx.strokeStyle = '#000000'; // Black path
+                ctx.lineWidth = 3;
+                ctx.setLineDash([5, 5]); // Dashed line
+                ctx.moveTo(path[0].x, path[0].y);
+                for (let i = 1; i < path.length; i++) {
+                    ctx.lineTo(path[i].x, path[i].y);
+                }
+                ctx.stroke();
+                ctx.setLineDash([]); // Reset line dash
+
+                // Draw numbers along the path
+                for (let i = 0; i < path.length; i++) {
+                    ctx.beginPath();
+                    ctx.arc(path[i].x, path[i].y, 10, 0, Math.PI * 2);
+                    ctx.fillStyle = '#3498db'; // Blue circle for path order
+                    ctx.fill();
+                    ctx.font = '12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle = 'white';
+                    ctx.fillText((i + 1).toString(), path[i].x, path[i].y);
+                }
+            }
+        }
+
+        /**
+         * Resizes the canvas to fit its parent container and redraws the map.
+         */
+        function resizeCanvas() {
+            const parent = canvas.parentElement;
+            canvas.width = parent.clientWidth;
+            canvas.height = parent.clientHeight;
+            drawMap(userPath); // Redraw map with current user path
+        }
+
+        // --- UI Update Functions ---
+
+        /**
+         * Updates the list of current errands displayed to the user.
+         */
+        function updateErrandList() {
+            currentErrandsUl.innerHTML = '';
+            if (currentErrandLocations.length === 0) {
+                const li = document.createElement('li');
+                li.textContent = 'Comienza una nueva aventura para ver tus misiones.';
+                currentErrandsUl.appendChild(li);
+                return;
+            }
+            currentErrandLocations.forEach(loc => {
+                const li = document.createElement('li');
+                li.className = 'errand-item';
+                li.innerHTML = `<span class="location-icon">${loc.icon}</span> ${loc.name}`;
+                currentErrandsUl.appendChild(li);
+            });
+        }
+
+        /**
+         * Updates the list of available locations for the user to select,
+         * indicating which ones are still needed for the current errands.
+         */
+        function updateAvailableLocations() {
+            availableLocationsDiv.innerHTML = '';
+            currentErrandLocations.forEach(loc => {
+                const span = document.createElement('span');
+                span.id = `avail-${loc.id}`;
+                span.textContent = loc.name;
+                span.dataset.locationId = loc.id;
+
+                // Check if this location is already in the user's path
+                const isAddedToPath = userPath.some(pathLoc => pathLoc.id === loc.id);
+
+                if (isAddedToPath) {
+                    span.className = 'available-location-item path-added';
+                    span.style.pointerEvents = 'none'; // Make it non-clickable
+                } else {
+                    span.className = 'available-location-item needed-errand'; // Style for needed locations
+                    span.onclick = () => {
+                        if (!gameStarted) return;
+                        // Deselect previous
+                        const prevSelected = document.querySelector('.available-location-item.selected');
+                        if (prevSelected) {
+                            prevSelected.classList.remove('selected');
+                        }
+                        // Select current
+                        span.classList.add('selected');
+                        selectedLocationId = loc.id;
+                        addLocationBtn.disabled = false;
+                        addLocationBtn.classList.remove('disabled');
+                    };
+                }
+                availableLocationsDiv.appendChild(span);
+            });
+        }
+
+        /**
+         * Updates the list of locations in the user's current path.
+         */
+        function updateUserPathDisplay() {
+            userPathListUl.innerHTML = '';
+            if (userPath.length === 0) {
+                const li = document.createElement('li');
+                li.textContent = 'Tu recorrido aparecerá aquí.';
+                userPathListUl.appendChild(li);
+                return;
+            }
+            userPath.forEach((loc, index) => {
+                const li = document.createElement('li');
+                li.className = 'user-path-item';
+                li.innerHTML = `<strong>${index + 1}.</strong> <span class="location-icon">${loc.icon}</span> ${loc.name}`;
+                userPathListUl.appendChild(li);
+            });
+            drawMap(userPath); // Redraw map with the updated user path
+            updateAvailableLocations(); // Re-render available locations to reflect added items
+        }
+
+        /**
+         * Displays a feedback message to the user (win/loss).
+         * @param {string} message - The message to display.
+         * @param {boolean} isWin - True if it's a win message, false for loss.
+         */
+        function showFeedback(message, isWin) {
+            feedbackDiv.textContent = message;
+            feedbackDiv.classList.remove('hidden', 'win', 'lose');
+            feedbackDiv.classList.add(isWin ? 'win' : 'lose');
+        }
+
+        /**
+         * Hides the feedback message.
+         */
+        function hideFeedback() {
+            feedbackDiv.classList.add('hidden');
+        }
+
+        // --- Game Logic ---
+
+        /**
+         * Starts a new game:
+         * 1. Resets game state.
+         * 2. Selects random errand locations.
+         * 3. Calculates the shortest path.
+         * 4. Updates the UI.
+         * 5. Enables game controls.
+         */
+        function startGame() {
+            gameStarted = true;
+            userPath = [];
+            selectedLocationId = null;
+            hideFeedback();
+            enableGameControls();
+
+            // Randomly select 3 to 5 unique locations for errands
+            const numErrands = Math.floor(Math.random() * 3) + 3; // 3, 4, or 5 errands
+            const shuffledLocations = [...locations].sort(() => 0.5 - Math.random());
+            currentErrandLocations = shuffledLocations.slice(0, numErrands);
+
+            // Calculate the correct (shortest) path
+            correctPath = findShortestPath(currentErrandLocations);
+            console.log('Shortest path (for debugging):', correctPath.map(loc => loc.name));
+            console.log('Shortest path distance:', calculatePathDistance(correctPath));
+
+            updateErrandList();
+            updateAvailableLocations();
+            updateUserPathDisplay(); // Clear user path display and update available locations
+            drawMap(); // Draw map without any path initially
+        }
+
+        /**
+         * Adds the currently selected location to the user's path.
+         */
+        function addLocationToUserPath() {
+            if (!gameStarted || !selectedLocationId) return;
+
+            const locToAdd = locations.find(loc => loc.id === selectedLocationId);
+            // Ensure the location is part of the current errands and not already in userPath
+            if (locToAdd && currentErrandLocations.some(errandLoc => errandLoc.id === locToAdd.id) && !userPath.some(pathLoc => pathLoc.id === locToAdd.id)) {
+                userPath.push(locToAdd);
+                updateUserPathDisplay(); // This will also call updateAvailableLocations
+
+                // Deselect the added location from available list
+                const prevSelected = document.querySelector('.available-location-item.selected');
+                if (prevSelected) {
+                    prevSelected.classList.remove('selected');
+                }
+                selectedLocationId = null;
+                addLocationBtn.disabled = true;
+                addLocationBtn.classList.add('disabled');
+
+                // If user path has all errand locations, enable submit
+                if (userPath.length === currentErrandLocations.length) {
+                    submitPathBtn.disabled = false;
+                    submitPathBtn.classList.remove('disabled');
+                }
+            }
+        }
+
+        /**
+         * Clears the user's current path.
+         */
+        function clearUserPath() {
+            if (!gameStarted) return;
+            userPath = [];
+            updateUserPathDisplay(); // This will also call updateAvailableLocations
+            submitPathBtn.disabled = true;
+            submitPathBtn.classList.add('disabled');
+            // Deselect any selected location
+            const prevSelected = document.querySelector('.available-location-item.selected');
+            if (prevSelected) {
+                prevSelected.classList.remove('selected');
+            }
+            selectedLocationId = null;
+            addLocationBtn.disabled = true;
+            addLocationBtn.classList.add('disabled');
+        }
+
+        /**
+         * Submits the user's path and checks if it's the shortest.
+         */
+        function submitPath() {
+            if (!gameStarted || userPath.length !== currentErrandLocations.length) {
+                showFeedback('¡Asegúrate de incluir todas las misiones en tu recorrido!', false);
+                return;
+            }
+
+            gameStarted = false; // End game
+            disableGameControls();
+
+            const userDistance = calculatePathDistance(userPath);
+            const correctDistance = calculatePathDistance(correctPath);
+
+            // Compare distances with a small tolerance for floating point errors
+            const tolerance = 0.01;
+            if (Math.abs(userDistance - correctDistance) < tolerance) {
+                showFeedback(`¡Felicidades! Encontraste el recorrido más corto. Distancia: ${userDistance.toFixed(2)}`, true);
+            } else {
+                showFeedback(`¡Oh no! No fue el recorrido más corto. Tu distancia: ${userDistance.toFixed(2)}. La distancia más corta era: ${correctDistance.toFixed(2)}.`, false);
+            }
+            drawMap(userPath); // Keep user's path drawn
+            updateAvailableLocations(); // Ensure available locations are updated to reflect game end
+        }
+
+        /**
+         * Disables game controls when the game is not active.
+         */
+        function disableGameControls() {
+            addLocationBtn.disabled = true;
+            addLocationBtn.classList.add('disabled');
+            clearPathBtn.disabled = true;
+            clearPathBtn.classList.add('disabled');
+            submitPathBtn.disabled = true;
+            submitPathBtn.classList.add('disabled');
+            // Disable click on available locations
+            document.querySelectorAll('.available-location-item').forEach(item => {
+                item.style.pointerEvents = 'none';
+                item.classList.remove('selected');
+            });
+        }
+
+        /**
+         * Enables game controls when a game is active.
+         */
+        function enableGameControls() {
+            clearPathBtn.disabled = false;
+            clearPathBtn.classList.remove('disabled');
+            // Re-enable click on available locations (only for "needed" ones)
+            document.querySelectorAll('.available-location-item').forEach(item => {
+                if (!item.classList.contains('path-added')) {
+                    item.style.pointerEvents = 'auto';
+                }
+            });
+        }
+
+        // --- Event Listeners and Initialization ---
+
+        window.onload = function() {
+            // Initial canvas resize and draw
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            // Event listeners for buttons
+            startGameBtn.addEventListener('click', startGame);
+            addLocationBtn.addEventListener('click', addLocationToUserPath);
+            clearPathBtn.addEventListener('click', clearUserPath);
+            submitPathBtn.addEventListener('click', submitPath);
+
+            // Initial state
+            disableGameControls();
+            drawMap();
+        };
+
+        // Ensure canvas dimensions are set for drawing
+        // This will be handled by resizeCanvas on window.onload
+        // but adding a fallback for immediate drawing if needed.
+        canvas.width = canvas.parentElement.clientWidth;
+        canvas.height = canvas.parentElement.clientHeight;
+
+    </script>
+</body>
+</html>
